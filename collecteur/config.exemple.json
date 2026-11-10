@@ -5,6 +5,8 @@
     "OU=Postes,DC=esk,DC=local"
   ],
   "FiltreAD": "Enabled -eq 'True'",
+  "RegexClasse": "",
+  "NomsClasses": {},
   "IntervalleSecondes": 30,
   "RafraichirADMinutes": 15,
   "Parallelisme": 64,

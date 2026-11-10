@@ -5,7 +5,9 @@ s'il est allumé, utilisé, verrouillé ou libre, et par qui.
 
 **Rien n'est installé sur les postes.** Un serveur du domaine les interroge par WinRM.
 
-![Écran de supervision](docs/ecran.png)
+![Écran de supervision, thème sombre](docs/ecran.png)
+
+La page suit le thème clair ou sombre du système ; le bouton en haut à droite permet de le forcer ([thème clair](docs/ecran-clair.png)).
 
 ## Fonctionnement
 
@@ -20,7 +22,7 @@ s'il est allumé, utilisé, verrouillé ou libre, et par qui.
 |---|---|
 | `collecteur/Collecter-Postes.ps1` | Lit les ordinateurs des OU choisies dans l'AD, interroge chaque poste en parallèle (64 à la fois par défaut), complète avec le nom complet et le service de l'utilisateur, puis envoie le tout au serveur. |
 | `serveur/supervision.py` | Reçoit les relevés, garde l'état et l'historique dans SQLite et pousse les changements en direct vers les navigateurs. Bibliothèque standard Python uniquement : aucun paquet à installer. |
-| `serveur/statique/` | La page web : une tuile par poste, regroupées par OU, compteurs cliquables, recherche, panneau de détail avec historique. |
+| `serveur/statique/` | La page web : une carte par classe avec sa jauge d'occupation, une tuile par poste, taux d'occupation global, filtres par état, recherche, panneau de détail avec historique. |
 | `outils/simulateur.py` | Envoie un faux parc de 400 postes pour tester l'écran sans AD. |
 
 ### États d'un poste
@@ -95,6 +97,8 @@ pwsh C:\Supervision\collecteur\Collecter-Postes.ps1 -UneFois -Afficher
 |---|---|---|
 | `OUs` | | Liste des OU contenant les postes (DN complets). |
 | `FiltreAD` | `Enabled -eq 'True'` | Filtre `Get-ADComputer`. |
+| `RegexClasse` | vide | Tire la classe du nom du poste, avec un groupe nommé `classe`. Ex. `^PC-(?<classe>[A-Z]\\d+)-` : `PC-B12-07` va dans la classe `B12`. Vide : la classe est l'OU qui contient le poste. |
+| `NomsClasses` | `{}` | Noms affichés, ex. `{ "B12": "Salle B12 – Informatique" }`. |
 | `IntervalleSecondes` | 30 | Délai entre deux passages. |
 | `RafraichirADMinutes` | 15 | Fréquence de relecture de la liste des postes dans l'AD. |
 | `Parallelisme` | 64 | Postes interrogés en même temps. |

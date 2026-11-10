@@ -9,10 +9,15 @@ import random
 import time
 import urllib.request
 
-# groupe : (préfixe du nom de poste, nombre de postes)
-GROUPES = {"Accueil": ("ACC", 12), "Comptabilité": ("CPT", 40), "Direction": ("DIR", 15),
-           "Informatique": ("INF", 25), "Production": ("PRD", 120), "Commercial": ("COM", 60),
-           "Logistique": ("LOG", 80), "Salle de formation": ("FOR", 48)}
+# classe : (préfixe du nom de poste, nombre de postes)
+GROUPES = {"Salle A01": ("A01", 16), "Salle A02": ("A02", 16), "Salle A03": ("A03", 20),
+           "Salle B11 – Informatique": ("B11", 30), "Salle B12 – Informatique": ("B12", 30),
+           "Salle B13 – Réseaux": ("B13", 24), "Salle C21 – CAO": ("C21", 24),
+           "Salle C22 – Bureautique": ("C22", 20), "CDI": ("CDI", 18), "Salle de langues": ("LAN", 24),
+           "Laboratoire": ("LAB", 16), "Salle D31": ("D31", 20), "Salle D32": ("D32", 20),
+           "Administration": ("ADM", 22), "Vie scolaire": ("VSC", 8), "Salle des profs": ("PRF", 12),
+           "Salle E41 – Projets": ("E41", 28), "Amphithéâtre": ("AMP", 6), "Accueil": ("ACC", 4),
+           "Direction": ("DIR", 6), "Salle E42": ("E42", 36)}
 PRENOMS = ["Julie", "Thomas", "Sarah", "Nicolas", "Camille", "Lucas", "Emma", "Hugo",
            "Léa", "Antoine", "Chloé", "Maxime", "Manon", "Pierre", "Inès", "Romain"]
 NOMS = ["Martin", "Bernard", "Dubois", "Durand", "Lefebvre", "Moreau", "Laurent",

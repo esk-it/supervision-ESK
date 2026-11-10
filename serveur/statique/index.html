@@ -5,28 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Supervision des postes</title>
   <link rel="stylesheet" href="style.css">
+  <script>
+    try { const t = localStorage.getItem("supervision-theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
 </head>
 <body>
-  <header class="entete">
-    <div class="titre">
+  <header class="barre">
+    <div class="marque">
       <h1>Supervision des postes</h1>
-      <span id="connexion" class="connexion" title="Liaison avec le serveur">connexion…</span>
+      <p class="sous-titre"><span id="connexion" class="connexion">Connexion…</span> · <time id="horloge"></time></p>
     </div>
-    <div id="compteurs" class="compteurs" role="group" aria-label="Filtrer par état"></div>
+
+    <div class="synthese">
+      <div class="parc">
+        <div class="parc-chiffres">
+          <strong id="taux">0 %</strong>
+          <span id="taux-detail">d'occupation</span>
+        </div>
+        <div id="parc-barre" class="jauge jauge-grande" aria-hidden="true"></div>
+      </div>
+      <div id="compteurs" class="filtres" role="group" aria-label="Filtrer par état"></div>
+    </div>
+
     <div class="outils">
-      <input id="recherche" type="search" placeholder="Poste, utilisateur, service…" aria-label="Rechercher">
-      <select id="groupe" aria-label="Groupe"></select>
-      <label class="bascule"><input id="masquer" type="checkbox"> Masquer hors ligne</label>
-      <time id="horloge" class="horloge"></time>
+      <input id="recherche" type="search" placeholder="Poste, utilisateur, classe…" aria-label="Rechercher">
+      <select id="groupe" aria-label="Classe"></select>
+      <label class="interrupteur" for="masquer"><input id="masquer" type="checkbox"> <span>Masquer hors ligne</span></label>
+      <button id="theme" class="bouton-icone" type="button" aria-label="Changer de thème" title="Changer de thème"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
     </div>
   </header>
 
-  <main id="contenu" class="contenu">
+  <main id="contenu" class="classes">
     <p class="vide">En attente des premières données du collecteur…</p>
   </main>
 
   <aside id="detail" class="detail" hidden aria-live="polite">
-    <button id="fermer" class="fermer" aria-label="Fermer">×</button>
+    <button id="fermer" class="bouton-icone fermer" type="button" aria-label="Fermer">✕</button>
     <div id="detail-corps"></div>
   </aside>
 

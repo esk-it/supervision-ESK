@@ -3,9 +3,9 @@
 const ETATS = [
   ["utilise", "Utilisés", "Utilisé"],
   ["verrouille", "Verrouillés", "Verrouillé"],
-  ["deconnecte", "Session déconnectée", "Session déconnectée"],
+  ["deconnecte", "Déconnectés", "Session déconnectée"],
   ["libre", "Libres", "Libre"],
-  ["erreur", "Injoignables WinRM", "Erreur WinRM"],
+  ["erreur", "Erreurs WinRM", "Erreur WinRM"],
   ["hors_ligne", "Hors ligne", "Hors ligne"],
 ];
 const LIBELLE = Object.fromEntries(ETATS.map(([e, , l]) => [e, l]));
@@ -55,6 +55,8 @@ function login(u) {
 }
 
 // --- Rendu ----------------------------------------------------------------
+const trier = (a, b) => a.localeCompare(b, "fr", { numeric: true, sensitivity: "base" });
+
 function planifierRendu() {
   if (!rendu) rendu = requestAnimationFrame(() => { rendu = 0; afficher(); });
 }
@@ -64,79 +66,104 @@ function filtres() {
   return (p) =>
     pref.etats.includes(p.etat) &&
     !(pref.masquer && p.etat === "hors_ligne") &&
-    (!pref.groupe || (p.groupe || "Sans groupe") === pref.groupe) &&
+    (!pref.groupe || classe(p) === pref.groupe) &&
     (!q || [p.nom, p.utilisateur, p.nom_complet, p.service, p.ip, p.groupe]
       .some((v) => v && String(v).toLowerCase().includes(q)));
 }
 
+const classe = (p) => p.groupe || "Sans classe";
+
+function compter(liste) {
+  const n = Object.fromEntries(ETATS.map(([e]) => [e, 0]));
+  for (const p of liste) n[p.etat] = (n[p.etat] || 0) + 1;
+  return n;
+}
+
+function jauge(n) {
+  return ETATS.filter(([e]) => n[e]).map(([e]) =>
+    `<span class="c-${e}" style="flex-grow:${n[e]}"></span>`).join("");
+}
+
 function afficher() {
   const tous = [...postes.values()];
-  afficherCompteurs(tous);
-  afficherGroupes(tous);
+  afficherSynthese(tous);
+  afficherClasses(tous);
 
-  const garder = filtres();
-  const visibles = tous.filter(garder);
   const contenu = $("contenu");
   if (!tous.length) {
     contenu.innerHTML = '<p class="vide">En attente des premières données du collecteur…</p>';
     return;
   }
-  if (!visibles.length) {
-    contenu.innerHTML = '<p class="vide">Aucun poste ne correspond aux filtres.</p>';
-    return;
-  }
-
-  const parGroupe = new Map();
-  for (const p of visibles) {
-    const g = p.groupe || "Sans groupe";
-    if (!parGroupe.has(g)) parGroupe.set(g, []);
-    parGroupe.get(g).push(p);
+  const garder = filtres();
+  const parClasse = new Map();
+  for (const p of tous) {
+    const c = classe(p);
+    if (!parClasse.has(c)) parClasse.set(c, { tous: [], visibles: [] });
+    const g = parClasse.get(c);
+    g.tous.push(p);
+    if (garder(p)) g.visibles.push(p);
   }
   const maintenant = Date.now() / 1000;
-  const html = [...parGroupe.keys()].sort((a, b) => a.localeCompare(b, "fr")).map((g) => {
-    const liste = parGroupe.get(g).sort((a, b) => a.nom.localeCompare(b.nom, "fr", { numeric: true }));
-    const actifs = liste.filter((p) => p.etat === "utilise").length;
-    return `<section class="groupe-poste">
-      <h2>${esc(g)} <small>${actifs} utilisé${actifs > 1 ? "s" : ""} sur ${liste.length}</small></h2>
-      <div class="grille">${liste.map((p) => tuile(p, maintenant)).join("")}</div>
-    </section>`;
-  }).join("");
-  contenu.innerHTML = html;
+  const cartes = [...parClasse.keys()].sort(trier)
+    .filter((c) => parClasse.get(c).visibles.length)
+    .map((c) => carte(c, parClasse.get(c), maintenant));
+  contenu.innerHTML = cartes.length ? cartes.join("")
+    : '<p class="vide">Aucun poste ne correspond aux filtres.</p>';
+}
+
+function carte(nom, { tous, visibles }, maintenant) {
+  const n = compter(tous);
+  const allumes = tous.length - n.hors_ligne;
+  return `<section class="classe">
+    <header class="classe-tete">
+      <h2>${esc(nom)}</h2>
+      <span class="occupation"><b>${n.utilise}</b> utilisé${n.utilise > 1 ? "s" : ""}${n.verrouille ? ` · ${n.verrouille} verrouillé${n.verrouille > 1 ? "s" : ""}` : ""} · ${allumes} allumé${allumes > 1 ? "s" : ""} sur ${tous.length}</span>
+      <div class="jauge" aria-hidden="true">${jauge(n)}</div>
+    </header>
+    <div class="postes">${visibles.sort((a, b) => trier(a.nom, b.nom)).map((p) => tuile(p, maintenant)).join("")}</div>
+  </section>`;
+}
+
+function prenomNom(p) {
+  if (p.nom_complet) return p.nom_complet;
+  return login(p.utilisateur);
 }
 
 function tuile(p, maintenant) {
-  const qui = p.nom_complet || login(p.utilisateur) ||
-    (p.etat === "erreur" ? "Erreur WinRM" : LIBELLE[p.etat]);
-  const inactif = p.etat === "utilise" && p.inactif_min >= 5 ? ` · inactif ${p.inactif_min} min` : "";
-  const classes = ["tuile", p.etat, `c-${p.etat}`];
+  const qui = p.utilisateur ? prenomNom(p) : LIBELLE[p.etat];
+  let sous = p.etat === "hors_ligne" ? "" : duree(p.depuis);
+  if (p.etat === "utilise" && p.inactif_min >= 5) sous = `inactif ${p.inactif_min} min`;
+  const classes = ["poste", p.etat, `c-${p.etat}`];
   if (p.perime) classes.push("perime");
   if (maintenant - p.depuis < 10) classes.push("recent");
-  const titre = [p.nom, LIBELLE[p.etat], p.utilisateur, p.service, p.perime ? "Pas de nouvelles du collecteur" : ""]
-    .filter(Boolean).join(" · ");
+  const titre = [p.nom, LIBELLE[p.etat], p.nom_complet, p.utilisateur, p.service,
+    p.perime ? "Pas de nouvelles du collecteur" : ""].filter(Boolean).join(" · ");
   return `<button class="${classes.join(" ")}" data-nom="${esc(p.nom)}" title="${esc(titre)}">
-    <span class="nom">${esc(p.nom)}</span>
-    <span class="qui">${esc(qui)}</span>
-    <span class="info"><span>${esc(p.utilisateur ? (p.service || login(p.utilisateur)) : (p.ip || ""))}</span>
-      <span>${esc(duree(p.depuis))}${esc(inactif)}</span></span>
+    <span class="poste-nom"><span>${esc(p.nom)}</span></span>
+    <span class="poste-qui">${esc(qui)}</span>
+    ${sous ? `<span class="poste-duree">${esc(sous)}</span>` : ""}
   </button>`;
 }
 
-function afficherCompteurs(tous) {
-  const n = Object.fromEntries(ETATS.map(([e]) => [e, 0]));
-  for (const p of tous) n[p.etat] = (n[p.etat] || 0) + 1;
+function afficherSynthese(tous) {
+  const n = compter(tous);
+  const allumes = tous.length - n.hors_ligne;
+  $("taux").textContent = allumes ? `${Math.round((100 * n.utilise) / allumes)} %` : "–";
+  $("taux-detail").textContent = `d'occupation · ${allumes} postes allumés sur ${tous.length}`;
+  $("parc-barre").innerHTML = jauge(n);
   $("compteurs").innerHTML = ETATS.map(([e, libelle]) =>
-    `<button class="compteur c-${e}" data-etat="${e}" aria-pressed="${pref.etats.includes(e)}">
-      <strong>${n[e]}</strong><span>${libelle}</span></button>`).join("");
+    `<button class="filtre c-${e}" data-etat="${e}" aria-pressed="${pref.etats.includes(e)}"
+      title="Afficher seulement : ${esc(libelle.toLowerCase())}"><strong>${n[e]}</strong><span>${libelle}</span></button>`).join("");
 }
 
-function afficherGroupes(tous) {
-  const groupes = [...new Set(tous.map((p) => p.groupe || "Sans groupe"))].sort((a, b) => a.localeCompare(b, "fr"));
+function afficherClasses(tous) {
+  const liste = [...new Set(tous.map(classe))].sort(trier);
   const sel = $("groupe");
-  const cle = groupes.join("|");
+  const cle = liste.join("|");
   if (sel.dataset.cle === cle) return;
   sel.dataset.cle = cle;
-  sel.innerHTML = `<option value="">Tous les groupes</option>` +
-    groupes.map((g) => `<option${g === pref.groupe ? " selected" : ""}>${esc(g)}</option>`).join("");
+  sel.innerHTML = `<option value="">Toutes les classes</option>` +
+    liste.map((g) => `<option${g === pref.groupe ? " selected" : ""}>${esc(g)}</option>`).join("");
 }
 
 // --- Panneau de détail -------------------------------------------------------
@@ -149,7 +176,7 @@ async function ouvrirDetail(nom) {
     const evts = await r.json();
     if (selection !== nom) return;
     $("historique").innerHTML = evts.length ? evts.map((e) =>
-      `<li class="c-${esc(e.etat)}"><span class="pastille"></span><time>${heure(e.ts)}</time>
+      `<li class="c-${esc(e.etat)}"><time>${heure(e.ts)}</time>
         <span>${esc(LIBELLE[e.etat] || e.etat)}${e.utilisateur ? " · " + esc(login(e.utilisateur)) : ""}</span></li>`).join("")
       : "<li>Aucun changement enregistré.</li>";
   } catch {
@@ -161,21 +188,21 @@ function afficherDetail() {
   const p = postes.get(selection);
   if (!p) return;
   const lignes = [
-    ["Utilisateur", p.nom_complet ? `${p.nom_complet} (${p.utilisateur})` : p.utilisateur],
-    ["Service", p.service],
+    ["Classe", p.groupe],
     ["Depuis", `${heure(p.depuis)} (${duree(p.depuis)})`],
     ["Inactivité", p.inactif_min != null ? `${p.inactif_min} min` : null],
     ["Adresse IP", p.ip],
-    ["Groupe", p.groupe],
-    ["OU", p.ou],
     ["Démarré le", p.demarrage],
     ["Dernier relevé", heure(p.vu_le) + (p.perime ? " (ancien)" : "")],
+    ["OU", p.ou],
     ["Erreur", p.erreur],
   ].filter(([, v]) => v);
   const histo = $("historique");
   $("detail-corps").innerHTML = `
     <h2>${esc(p.nom)}</h2>
     <span class="etiquette c-${p.etat}">${esc(LIBELLE[p.etat])}</span>
+    ${p.utilisateur ? `<p class="personne">${esc(prenomNom(p))}
+      <small>${esc(p.utilisateur)}${p.service ? " · " + esc(p.service) : ""}</small></p>` : ""}
     <dl>${lignes.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
     <h3>Historique</h3>
     <ul id="historique" class="historique">${histo ? histo.innerHTML : "<li>Chargement…</li>"}</ul>`;
@@ -218,7 +245,7 @@ $("masquer").checked = pref.masquer;
 $("masquer").addEventListener("change", (e) => { pref.masquer = e.target.checked; sauverPreferences(); afficher(); });
 $("recherche").addEventListener("input", planifierRendu);
 $("contenu").addEventListener("click", (e) => {
-  const t = e.target.closest(".tuile");
+  const t = e.target.closest(".poste");
   if (t) ouvrirDetail(t.dataset.nom);
 });
 $("fermer").addEventListener("click", () => { $("detail").hidden = true; selection = null; });
@@ -226,8 +253,17 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { $("detail").hidden = true; selection = null; }
 });
 
+$("theme").addEventListener("click", () => {
+  const sombre = getComputedStyle(document.documentElement).colorScheme === "dark";
+  const t = sombre ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("supervision-theme", t); } catch { /* sans importance */ }
+});
+
 function horloge() {
-  $("horloge").textContent = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  $("horloge").textContent = new Date().toLocaleString("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+  });
 }
 horloge();
 setInterval(horloge, 10_000);

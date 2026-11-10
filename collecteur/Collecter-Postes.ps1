@@ -50,6 +50,10 @@ $delai       = [int]($cfg.DelaiSecondes ?? 5)
 $avecQuser   = [bool]($cfg.Quser ?? $true)
 $filtreAD    = [string]($cfg.FiltreAD ?? "Enabled -eq 'True'")
 $urlReleve   = ([string]$cfg.ServeurUrl).TrimEnd('/') + '/api/releve'
+# Classe d'un poste : par défaut l'OU qui le contient ; sinon tirée de son nom
+# par une expression régulière avec un groupe nommé « classe ».
+$regexClasse = [string]$cfg.RegexClasse
+$nomsClasses = $cfg.NomsClasses   # correspondances facultatives, ex. { "B12": "Salle B12" }
 
 function Write-Journal([string]$Message, [string]$Niveau = 'INFO') {
     Write-Host ("{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}" -f (Get-Date), $Niveau, $Message)
@@ -59,13 +63,17 @@ function Get-OrdinateursAD {
     foreach ($ou in $cfg.OUs) {
         Get-ADComputer -SearchBase $ou -Filter $filtreAD -Properties DNSHostName |
             ForEach-Object {
-                # Groupe affiché = première OU au-dessus de l'objet ordinateur.
                 $ous = [regex]::Matches($_.DistinguishedName, '(?<=OU=)(?:[^,\\]|\\.)+') |
                     ForEach-Object Value
+                $classe = $ous | Select-Object -First 1
+                if ($regexClasse -and $_.Name -match $regexClasse -and $Matches['classe']) {
+                    $classe = $Matches['classe']
+                }
+                if ($nomsClasses -and $nomsClasses.$classe) { $classe = $nomsClasses.$classe }
                 [pscustomobject]@{
                     Nom    = $_.Name
                     Hote   = $_.DNSHostName ? $_.DNSHostName : $_.Name
-                    Groupe = $ous | Select-Object -First 1
+                    Groupe = $classe
                     OU     = ($_.DistinguishedName -replace '^CN=(?:[^,\\]|\\.)+,', '')
                 }
             }
