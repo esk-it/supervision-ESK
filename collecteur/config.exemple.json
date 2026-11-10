@@ -1,0 +1,13 @@
+{
+  "ServeurUrl": "http://srv-supervision:8080",
+  "Token": "remplacer-par-un-secret-long",
+  "OUs": [
+    "OU=Postes,DC=esk,DC=local"
+  ],
+  "FiltreAD": "Enabled -eq 'True'",
+  "IntervalleSecondes": 30,
+  "RafraichirADMinutes": 15,
+  "Parallelisme": 64,
+  "DelaiSecondes": 5,
+  "Quser": true
+}

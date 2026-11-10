@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Supervision des postes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="entete">
+    <div class="titre">
+      <h1>Supervision des postes</h1>
+      <span id="connexion" class="connexion" title="Liaison avec le serveur">connexion…</span>
+    </div>
+    <div id="compteurs" class="compteurs" role="group" aria-label="Filtrer par état"></div>
+    <div class="outils">
+      <input id="recherche" type="search" placeholder="Poste, utilisateur, service…" aria-label="Rechercher">
+      <select id="groupe" aria-label="Groupe"></select>
+      <label class="bascule"><input id="masquer" type="checkbox"> Masquer hors ligne</label>
+      <time id="horloge" class="horloge"></time>
+    </div>
+  </header>
+
+  <main id="contenu" class="contenu">
+    <p class="vide">En attente des premières données du collecteur…</p>
+  </main>
+
+  <aside id="detail" class="detail" hidden aria-live="polite">
+    <button id="fermer" class="fermer" aria-label="Fermer">×</button>
+    <div id="detail-corps"></div>
+  </aside>
+
+  <script src="app.js"></script>
+</body>
+</html>
