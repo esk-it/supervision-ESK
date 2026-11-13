@@ -11,6 +11,8 @@ La page suit le thème clair ou sombre du système ; le bouton en haut à droite
 
 ## Fonctionnement
 
+Détails internes (API, modèle de données, dépannage) : [documentation technique](docs/technique.md).
+
 ```
  Active Directory ──(liste des postes, noms des utilisateurs)──┐
                                                                ▼
